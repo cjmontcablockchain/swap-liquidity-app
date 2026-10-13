@@ -8,7 +8,7 @@ ERC-20 token for another through a Uniswap V2-compatible router, built with
 [Foundry](https://book.getfoundry.sh/), plus a React/wagmi web interface
 ([web/](web/)) to try it live on Arbitrum Sepolia.
 
-**Live demo:** _add your Vercel URL here once deployed._
+**Live demo:** deploy instructions in [Web interface](#web-interface) below — not yet live.
 
 ## How it works
 
