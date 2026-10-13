@@ -4,21 +4,27 @@ pragma solidity 0.8.24;
 import "forge-std/Test.sol";
 import "../src/SwapApp.sol";
 
-/// @dev Tests run against a pinned Arbitrum mainnet fork so Uniswap V2 liquidity
-///      and token behaviour are real, but the test user's balance is funded via
-///      `deal` instead of relying on a specific external wallet's live balance.
+/// @dev Tests run against a live Arbitrum mainnet fork (latest block) so
+///      Uniswap V2 liquidity and token behaviour are real, but the test
+///      user's balance is funded via `deal` instead of relying on a specific
+///      external wallet's live balance. An earlier version pinned a fixed
+///      historical block for extra determinism, but free public RPC
+///      endpoints are not archive nodes and stop serving old block state
+///      after a while — that broke CI once the pinned block aged out. None
+///      of the assertions below depend on an exact swap output (only
+///      thresholds/deltas), so forking at latest is safe and avoids relying
+///      on archive-node support.
 contract SwapAppTest is Test {
     SwapApp app;
 
     address constant V2_ROUTER = 0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24;
     address constant USDT = 0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9;
     address constant DAI = 0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1;
-    uint256 constant FORK_BLOCK = 514143777;
 
     address user;
 
     function setUp() public {
-        vm.createSelectFork(vm.envOr("ARBITRUM_RPC_URL", string("https://arb1.arbitrum.io/rpc")), FORK_BLOCK);
+        vm.createSelectFork(vm.envOr("ARBITRUM_RPC_URL", string("https://arb1.arbitrum.io/rpc")));
         app = new SwapApp(V2_ROUTER);
         user = makeAddr("user");
         deal(USDT, user, 1_000e6);

@@ -38,11 +38,16 @@ fixed at deployment time ([src/SwapApp.sol](src/SwapApp.sol)).
 - **Input validation**: the constructor rejects the zero address for the
   router, and `swapTokens` rejects paths shorter than two tokens, both via
   custom errors (`ZeroAddress`, `InvalidPath`) instead of silent failures.
-- **Deterministic fork tests**: the test suite forks Arbitrum mainnet at a
-  pinned block and funds a throwaway test address with USDT using Foundry's
-  `deal` cheatcode, rather than relying on a specific wallet's live balance.
-  This keeps `forge test` reproducible indefinitely without needing a
-  historical snapshot of anyone's real funds.
+- **Fork tests fund their own test user**: the test suite forks live
+  Arbitrum mainnet and funds a throwaway test address with USDT using
+  Foundry's `deal` cheatcode, rather than relying on a specific wallet's live
+  balance (that wallet's balance already changed once since this was
+  written — this is why `deal` is used instead). An earlier version also
+  pinned a fixed historical block for extra determinism; that was reverted
+  because free public RPC endpoints aren't archive nodes and stop serving
+  old block state after a while, which broke CI once the pinned block aged
+  out. None of the assertions depend on an exact swap output, only on
+  thresholds and balance deltas, so forking at latest is safe.
 - **Testnet demo AMM is not Uniswap V2**: Uniswap V2 has no official router
   deployment on Arbitrum Sepolia, so the live demo runs against a small
   constant-product AMM written for this project
@@ -86,7 +91,7 @@ forge build
 
 ### Test
 
-Runs against a pinned Arbitrum mainnet fork (requires network access to an
+Runs against a live Arbitrum mainnet fork (requires network access to an
 RPC endpoint; defaults to the public Arbitrum RPC if `ARBITRUM_RPC_URL` is
 unset):
 
