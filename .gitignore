@@ -1,0 +1,10 @@
+# Foundry build artifacts
+out/
+cache/
+broadcast/
+
+# Environment
+.env
+
+# OS / editor
+.DS_Store

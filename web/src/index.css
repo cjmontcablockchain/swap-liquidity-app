@@ -1,0 +1,13 @@
+@import "tailwindcss";
+@import "@rainbow-me/rainbowkit/styles.css";
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  background-color: #0b0d12;
+  color: #e6e8eb;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}

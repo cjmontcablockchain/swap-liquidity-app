@@ -1,0 +1,25 @@
+[
+  {
+    "type": "function",
+    "name": "swapTokens",
+    "inputs": [
+      { "name": "amountIn_", "type": "uint256" },
+      { "name": "amountOutMin_", "type": "uint256" },
+      { "name": "path_", "type": "address[]" },
+      { "name": "deadline_", "type": "uint256" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "event",
+    "name": "SwapTokens",
+    "inputs": [
+      { "name": "tokenIn", "type": "address", "indexed": false },
+      { "name": "tokenOut", "type": "address", "indexed": false },
+      { "name": "amountIn", "type": "uint256", "indexed": false },
+      { "name": "amountOut", "type": "uint256", "indexed": false }
+    ],
+    "anonymous": false
+  }
+]
