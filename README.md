@@ -1,14 +1,14 @@
 # Token Swap & Liquidity App
 
-[![test](https://github.com/cjmontcablockchain/token-swap-app/actions/workflows/test.yml/badge.svg)](https://github.com/cjmontcablockchain/token-swap-app/actions/workflows/test.yml)
-[![web](https://github.com/cjmontcablockchain/token-swap-app/actions/workflows/web.yml/badge.svg)](https://github.com/cjmontcablockchain/token-swap-app/actions/workflows/web.yml)
+[![test](https://github.com/cjmontcablockchain/swap-liquidity-app/actions/workflows/test.yml/badge.svg)](https://github.com/cjmontcablockchain/swap-liquidity-app/actions/workflows/test.yml)
+[![web](https://github.com/cjmontcablockchain/swap-liquidity-app/actions/workflows/web.yml/badge.svg)](https://github.com/cjmontcablockchain/swap-liquidity-app/actions/workflows/web.yml)
 
 A minimal Solidity contract that lets a caller swap an exact amount of one
 ERC-20 token for another through a Uniswap V2-compatible router, built with
 [Foundry](https://book.getfoundry.sh/), plus a React/wagmi web interface
 ([web/](web/)) to try it live on Arbitrum Sepolia.
 
-This project extends [token-swap-app](../token-swap-app) with liquidity
+This project extends [token-swap-app](https://github.com/cjmontcablockchain/token-swap-app) with liquidity
 provision: `LiquidityApp` ([src/LiquidityApp.sol](src/LiquidityApp.sol)) adds
 and removes liquidity through the same router, and the web interface has a
 Liquidity tab next to Swap. `SwapApp` is unchanged.
