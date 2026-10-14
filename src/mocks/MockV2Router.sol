@@ -117,7 +117,7 @@ contract MockV2Router is IV2Router02, IV2Factory {
     function _getOrCreatePair(address tokenA, address tokenB) internal returns (MockPair pair) {
         pair = MockPair(getPair[tokenA][tokenB]);
         if (address(pair) == address(0)) {
-            pair = new MockPair();
+            pair = new MockPair(tokenA, tokenB);
             getPair[tokenA][tokenB] = address(pair);
             getPair[tokenB][tokenA] = address(pair);
         }

@@ -246,6 +246,120 @@ function AddLiquidity({ pool }: { pool: Pool }) {
   )
 }
 
+function ZapLiquidity({ pool }: { pool: Pool }) {
+  const { isConnected } = useAccount()
+  const [fromKey, setFromKey] = useState<'dusd' | 'ddai'>('dusd')
+  const [amount, setAmount] = useState('')
+
+  const fromToken = tokens.find((t) => t.key === fromKey)!
+  const otherToken = tokens.find((t) => t.key !== fromKey)!
+  const parsed = useMemo(() => parseAmount(amount, fromToken.decimals), [amount, fromToken.decimals])
+  const poolReady = Boolean(pool.pair && pool.reserveA && pool.reserveB)
+
+  const { data: quote } = useReadContract({
+    address: contracts.liquidityApp,
+    abi: liquidityAppAbi,
+    functionName: 'quoteZapIn',
+    args: parsed ? [fromToken.address, otherToken.address, parsed] : undefined,
+    query: {
+      enabled: Boolean(contracts.liquidityApp && poolReady && parsed && parsed > 0n),
+      refetchInterval: REFRESH_MS,
+    },
+  })
+  const [swapAmount, amountOut, expectedLp] = (quote as readonly [bigint, bigint, bigint] | undefined) ?? []
+
+  const approval = useApproval(fromToken.address, parsed)
+  const zap = useWriteContract()
+  const zapReceipt = useWaitForTransactionReceipt({ hash: zap.data })
+
+  useEffect(() => {
+    if (zapReceipt.isSuccess) void pool.refetchLp()
+  }, [zapReceipt.isSuccess, pool])
+
+  const valid = Boolean(isConnected && contracts.liquidityApp && poolReady && parsed && parsed > 0n && quote)
+
+  function handleZap() {
+    if (!parsed || amountOut === undefined || expectedLp === undefined) return
+    if (!contracts.liquidityApp || !fromToken.address || !otherToken.address) return
+    const deadline = BigInt(Math.floor(Date.now() / 1000) + 600)
+    zap.writeContract({
+      address: contracts.liquidityApp,
+      abi: liquidityAppAbi,
+      functionName: 'zapIn',
+      args: [
+        fromToken.address,
+        otherToken.address,
+        parsed,
+        withSlippage(amountOut),
+        withSlippage(expectedLp),
+        deadline,
+      ],
+    })
+  }
+
+  const error = approval.error ?? zap.error
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex gap-2">
+        {tokens.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            onClick={() => setFromKey(t.key)}
+            className={`flex-1 rounded-lg px-3 py-2 text-sm ${
+              fromKey === t.key ? 'bg-indigo-500 text-white' : 'bg-black/30 text-white/70 hover:bg-black/50'
+            }`}
+          >
+            Pay with {t.symbol}
+          </button>
+        ))}
+      </div>
+      <div className="flex items-center gap-3">
+        <input
+          type="number"
+          min="0"
+          placeholder="0.0"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          className="w-full rounded-lg bg-black/30 px-3 py-2 text-lg outline-none"
+        />
+        <span className="w-20 shrink-0 text-right font-medium">{fromToken.symbol}</span>
+      </div>
+      <div className="flex flex-col gap-1 text-sm text-white/60">
+        <div className="flex justify-between">
+          <span>Swapped for {otherToken.symbol}</span>
+          <span>
+            {fmt(swapAmount, fromToken.decimals)} {fromToken.symbol} → {fmt(amountOut, otherToken.decimals)}{' '}
+            {otherToken.symbol}
+          </span>
+        </div>
+        <div className="flex justify-between">
+          <span>You receive (estimated)</span>
+          <span>{fmt(expectedLp, 18)} LP</span>
+        </div>
+      </div>
+      {!poolReady && <p className="text-sm text-white/50">A single-token deposit needs an existing pool.</p>}
+      {approval.needed ? (
+        <button type="button" disabled={!valid || approval.busy} onClick={approval.approve} className={approveButton}>
+          {approval.busy ? 'Approving…' : `Approve ${fromToken.symbol}`}
+        </button>
+      ) : (
+        <button
+          type="button"
+          disabled={!valid || zap.isPending || zapReceipt.isLoading}
+          onClick={handleZap}
+          className={primaryButton}
+        >
+          {zap.isPending || zapReceipt.isLoading ? 'Adding…' : 'Swap & add liquidity'}
+        </button>
+      )}
+      {zapReceipt.isSuccess && <p className="text-sm text-emerald-400">Liquidity added ✓</p>}
+      {error && <p className="text-sm text-red-400">{error.message}</p>}
+    </div>
+  )
+}
+
 function RemoveLiquidity({ pool }: { pool: Pool }) {
   const { isConnected } = useAccount()
   const [percent, setPercent] = useState<bigint>(100n)
@@ -331,6 +445,20 @@ function RemoveLiquidity({ pool }: { pool: Pool }) {
   )
 }
 
+function AddTab({ pool }: { pool: Pool }) {
+  const [single, setSingle] = useState(false)
+
+  return (
+    <div className="flex flex-col gap-4">
+      <label className="flex items-center gap-2 text-sm text-white/70">
+        <input type="checkbox" checked={single} onChange={(e) => setSingle(e.target.checked)} />
+        Use a single token (swap half automatically)
+      </label>
+      {single ? <ZapLiquidity pool={pool} /> : <AddLiquidity pool={pool} />}
+    </div>
+  )
+}
+
 export function LiquidityForm() {
   const [mode, setMode] = useState<'add' | 'remove'>('add')
   const pool = usePool()
@@ -355,7 +483,7 @@ export function LiquidityForm() {
           Contracts not configured yet — set VITE_LIQUIDITY_APP_ADDRESS in web/.env.
         </p>
       )}
-      {mode === 'add' ? <AddLiquidity pool={pool} /> : <RemoveLiquidity pool={pool} />}
+      {mode === 'add' ? <AddTab pool={pool} /> : <RemoveLiquidity pool={pool} />}
     </div>
   )
 }

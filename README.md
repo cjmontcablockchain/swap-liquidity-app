@@ -47,10 +47,27 @@ remove: caller --removeLiquidity(tokenA, tokenB, liquidity, minA/B, deadline)-->
           pulls LP tokens, approves router, router.removeLiquidity(..., to = caller).
 ```
 
+```
+zap:    caller --zapIn(tokenIn, tokenOther, amountIn, amountOutMin, liquidityMin, deadline)--> LiquidityApp
+          reads the pool's reserves, computes how much of tokenIn to swap so that the
+          remainder and the swap output land in the pool's post-swap ratio,
+          router.swapExactTokensForTokens(...), then router.addLiquidity(...),
+          and refunds any rounding remainder of either token.
+```
+
+`zapIn` lets a provider deposit with a single token (e.g. 6 USDT into a
+USDT/DAI pool). The amount swapped is *not* exactly half: with the 0.3% fee and
+the price impact of the swap itself it solves
+`s = (sqrt(r·(a·4·997·1000 + r·1997²)) − r·1997) / (2·997)`
+(`r` = reserve of the input token, `a` = amount paid). `quoteZapIn` previews
+the swap, its output and the LP tokens minted. The pool must already exist.
+The fee constants assume a 0.3% router (Uniswap V2, SushiSwap V2); another fee
+only leaves slightly more dust, which is refunded.
+
 The caller must approve `LiquidityApp` for both tokens when adding, and for
 the pair's LP token (`LiquidityApp.getPair(a, b)`) when removing. The
 interface gained `addLiquidity`, `removeLiquidity` and `factory` (plus the new
-`IV2Factory.getPair`), all matching the real Uniswap V2 router signatures.
+`IV2Factory.getPair` and `IV2Pair.getReserves/token0`), all matching the real Uniswap V2 router signatures.
 `MockV2Router` now mirrors them, acts as its own factory, and issues an LP
 token (`MockPair`) per pool, so swap fees accrue to liquidity providers.
 Liquidity is tested both against the mock (`LiquidityApp.t.sol`) and on an
@@ -92,9 +109,10 @@ Arbitrum fork against the real router (`LiquidityAppFork.t.sol`).
 ```
 src/
   SwapApp.sol                Swap contract
-  LiquidityApp.sol           Add/remove liquidity contract
+  LiquidityApp.sol           Add/remove liquidity and single-token zapIn contract
   interfaces/IV2Router02.sol  Minimal Uniswap V2 router interface (swap + liquidity)
   interfaces/IV2Factory.sol   Minimal factory interface (getPair = LP token)
+  interfaces/IV2Pair.sol      Minimal pair interface (reserves, used by zapIn)
   mocks/
     MockERC20.sol             Faucet-mintable demo ERC-20
     MockV2Router.sol          Self-contained constant-product AMM (swap + LP tokens) for the testnet demo

@@ -24,8 +24,8 @@ contract LiquidityAppTest is Test {
         app = new LiquidityApp(address(router));
         deadline = block.timestamp + 1000;
 
-        dusd.mint(user, 10_000e6);
-        ddai.mint(user, 10_000e18);
+        dusd.mint(user, 2_000_000e6);
+        ddai.mint(user, 2_000_000e18);
 
         vm.startPrank(user);
         dusd.approve(address(app), type(uint256).max);
@@ -168,5 +168,133 @@ contract LiquidityAppTest is Test {
 
         // User gets more DUSD back than the 1,000 deposited (minus the locked minimum share).
         assertGt(dusd.balanceOf(user) - dusdBefore, 1_000e6);
+    }
+
+    // ---------------------------------------------------------------- zapIn
+
+    function _zap(address tokenIn, address tokenOther, uint256 amountIn) internal returns (uint256 liquidity) {
+        vm.prank(user);
+        liquidity = app.zapIn(tokenIn, tokenOther, amountIn, 0, 0, deadline);
+    }
+
+    function testZapInSwapsAboutHalfAndMintsLp() public {
+        _seed(1_000_000e6, 1_000_000e18);
+        address pair = app.getPair(address(dusd), address(ddai));
+        uint256 dusdBefore = dusd.balanceOf(user);
+        uint256 ddaiBefore = ddai.balanceOf(user);
+
+        (uint256 swapAmount,, uint256 quotedLiquidity) = app.quoteZapIn(address(dusd), address(ddai), 6e6);
+        // Roughly half (slightly under, thanks to the fee) is swapped.
+        assertGt(swapAmount, 2_900_000);
+        assertLt(swapAmount, 3_100_000);
+
+        uint256 lpBefore = IERC20(pair).balanceOf(user);
+        uint256 liquidity = _zap(address(dusd), address(ddai), 6e6);
+
+        // The quote is an upper estimate: the router's optimal amounts round down slightly.
+        assertLe(liquidity, quotedLiquidity);
+        assertApproxEqRel(liquidity, quotedLiquidity, 1e12); // within 0.0001%
+        assertEq(IERC20(pair).balanceOf(user) - lpBefore, liquidity);
+        // Spent (almost) exactly the 6 DUSD; whatever was not used came back.
+        assertLe(dusdBefore - dusd.balanceOf(user), 6e6);
+        assertGe(dusdBefore - dusd.balanceOf(user), 6e6 - 6_000);
+        assertLe(ddai.balanceOf(user) - ddaiBefore, 6e15);
+        assertEq(dusd.balanceOf(address(app)), 0);
+        assertEq(ddai.balanceOf(address(app)), 0);
+        assertEq(dusd.allowance(address(app), address(router)), 0);
+        assertEq(ddai.allowance(address(app), address(router)), 0);
+    }
+
+    function testZapInWorksInBothDirections() public {
+        _seed(1_000_000e6, 1_000_000e18);
+        uint256 liquidity = _zap(address(ddai), address(dusd), 6e18);
+        assertGt(liquidity, 0);
+        assertEq(ddai.balanceOf(address(app)), 0);
+        assertEq(dusd.balanceOf(address(app)), 0);
+    }
+
+    function testZapInPositionIsWorthWhatWasPaid() public {
+        uint256 seedLiquidity = _seed(1_000_000e6, 1_000_000e18);
+        address pair = app.getPair(address(dusd), address(ddai));
+        uint256 dusdStart = dusd.balanceOf(user);
+        uint256 ddaiStart = ddai.balanceOf(user);
+
+        uint256 liquidity = _zap(address(dusd), address(ddai), 1_000e6);
+
+        vm.startPrank(user);
+        IERC20(pair).approve(address(app), liquidity);
+        app.removeLiquidity(address(dusd), address(ddai), liquidity, 0, 0, deadline);
+        vm.stopPrank();
+
+        // Out and back: the 0.3% fee on the swapped half is the only real cost (plus
+        // price impact), so the user gets back > 99.7% of 1,000 DUSD-equivalent value.
+        uint256 valueBack = (dusd.balanceOf(user) - (dusdStart - 1_000e6)) + (ddai.balanceOf(user) - ddaiStart) / 1e12;
+        assertGt(valueBack, 996e6);
+        assertLe(valueBack, 1_000e6);
+        assertGt(seedLiquidity, 0);
+    }
+
+    function testZapInRevertsWhenPairMissing() public {
+        vm.prank(user);
+        vm.expectRevert(LiquidityApp.PairNotFound.selector);
+        app.zapIn(address(dusd), address(ddai), 6e6, 0, 0, deadline);
+    }
+
+    function testZapInRevertsOnZeroAmount() public {
+        _seed(1_000e6, 1_000e18);
+        vm.prank(user);
+        vm.expectRevert(LiquidityApp.ZeroAmount.selector);
+        app.zapIn(address(dusd), address(ddai), 0, 0, 0, deadline);
+    }
+
+    function testZapInRevertsOnIdenticalTokens() public {
+        vm.prank(user);
+        vm.expectRevert(LiquidityApp.IdenticalTokens.selector);
+        app.zapIn(address(dusd), address(dusd), 6e6, 0, 0, deadline);
+    }
+
+    function testZapInRevertsWhenSwapOutputBelowMin() public {
+        _seed(1_000_000e6, 1_000_000e18);
+        vm.prank(user);
+        vm.expectRevert(bytes("MockV2Router: INSUFFICIENT_OUTPUT_AMOUNT"));
+        app.zapIn(address(dusd), address(ddai), 6e6, type(uint256).max, 0, deadline);
+    }
+
+    function testZapInRevertsWhenLiquidityBelowMin() public {
+        _seed(1_000_000e6, 1_000_000e18);
+        vm.prank(user);
+        vm.expectRevert(LiquidityApp.InsufficientLiquidityMinted.selector);
+        app.zapIn(address(dusd), address(ddai), 6e6, 0, type(uint256).max, deadline);
+    }
+
+    function testZapInRevertsOnExpiredDeadline() public {
+        _seed(1_000_000e6, 1_000_000e18);
+        vm.prank(user);
+        vm.expectRevert(bytes("MockV2Router: EXPIRED"));
+        app.zapIn(address(dusd), address(ddai), 6e6, 0, 0, block.timestamp - 1);
+    }
+
+    function testZapInEmitsEvent() public {
+        _seed(1_000_000e6, 1_000_000e18);
+        vm.expectEmit(true, true, true, false, address(app));
+        emit LiquidityApp.ZapIn(user, address(dusd), address(ddai), 6e6, 0);
+        _zap(address(dusd), address(ddai), 6e6);
+    }
+
+    /// @dev Whatever the amount, the swap is sized so almost nothing is left over
+    ///      (<= 0.1% of the input on either side) and the app keeps no balance.
+    function testFuzzZapInLeavesNegligibleDust(uint256 amountIn) public {
+        _seed(1_000_000e6, 1_000_000e18);
+        amountIn = bound(amountIn, 1e6, 100_000e6);
+        dusd.mint(user, amountIn);
+
+        uint256 dusdBefore = dusd.balanceOf(user);
+        uint256 ddaiBefore = ddai.balanceOf(user);
+        _zap(address(dusd), address(ddai), amountIn);
+
+        assertEq(dusd.balanceOf(address(app)), 0);
+        assertEq(ddai.balanceOf(address(app)), 0);
+        assertGe(dusdBefore - dusd.balanceOf(user), amountIn - amountIn / 1000);
+        assertLe(ddai.balanceOf(user) - ddaiBefore, (amountIn * 1e12) / 1000);
     }
 }

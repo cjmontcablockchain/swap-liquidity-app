@@ -104,4 +104,61 @@ contract LiquidityAppForkTest is Test {
         app.removeLiquidity(USDT, DAI, liquidity, 0, 0, block.timestamp + 1000);
         vm.stopPrank();
     }
+
+    function testZapInSixUsdtIntoUsdtDaiPool() public {
+        uint256 usdtBefore = IERC20(USDT).balanceOf(user);
+        uint256 daiBefore = IERC20(DAI).balanceOf(user);
+        uint256 appUsdtBefore = IERC20(USDT).balanceOf(address(app));
+        uint256 appDaiBefore = IERC20(DAI).balanceOf(address(app));
+
+        (uint256 swapAmount, uint256 quotedOut, uint256 quotedLiquidity) = app.quoteZapIn(USDT, DAI, 6e6);
+        // About half of the 6 USDT gets swapped for DAI.
+        assertGt(swapAmount, 2.5e6);
+        assertLt(swapAmount, 3.5e6);
+        assertGt(quotedOut, 0);
+
+        vm.prank(user);
+        uint256 liquidity = app.zapIn(USDT, DAI, 6e6, quotedOut * 99 / 100, quotedLiquidity * 99 / 100, block.timestamp + 1000);
+
+        assertGt(liquidity, 0);
+        assertEq(IERC20(pair).balanceOf(user), liquidity);
+        // All 6 USDT were used (give or take dust) and the DAI leftover is negligible.
+        assertLe(usdtBefore - IERC20(USDT).balanceOf(user), 6e6);
+        assertGe(usdtBefore - IERC20(USDT).balanceOf(user), 6e6 - 6_000);
+        assertLe(IERC20(DAI).balanceOf(user) - daiBefore, 0.01e18);
+        // The app keeps nothing and leaves no allowance on the router.
+        assertEq(IERC20(USDT).balanceOf(address(app)), appUsdtBefore);
+        assertEq(IERC20(DAI).balanceOf(address(app)), appDaiBefore);
+        assertEq(IERC20(USDT).allowance(address(app), V2_ROUTER), 0);
+        assertEq(IERC20(DAI).allowance(address(app), V2_ROUTER), 0);
+    }
+
+    function testZapInDaiIntoUsdtDaiPoolThenRemove() public {
+        vm.startPrank(user);
+        uint256 liquidity = app.zapIn(DAI, USDT, 6e18, 0, 0, block.timestamp + 1000);
+        assertGt(liquidity, 0);
+
+        uint256 usdtBefore = IERC20(USDT).balanceOf(user);
+        uint256 daiBefore = IERC20(DAI).balanceOf(user);
+        IERC20(pair).approve(address(app), liquidity);
+        app.removeLiquidity(USDT, DAI, liquidity, 0, 0, block.timestamp + 1000);
+        vm.stopPrank();
+
+        // Out and back the user holds ~6 USD of value, minus fees and price impact.
+        uint256 valueBack = (IERC20(USDT).balanceOf(user) - usdtBefore) * 1e12 + (IERC20(DAI).balanceOf(user) - daiBefore);
+        assertGt(valueBack, 5.8e18);
+        assertLt(valueBack, 6.2e18);
+    }
+
+    function testZapInRevertsWhenMinLiquidityNotMet() public {
+        vm.prank(user);
+        vm.expectRevert(LiquidityApp.InsufficientLiquidityMinted.selector);
+        app.zapIn(USDT, DAI, 6e6, 0, type(uint256).max, block.timestamp + 1000);
+    }
+
+    function testZapInRevertsWhenPairMissing() public {
+        vm.prank(user);
+        vm.expectRevert(LiquidityApp.PairNotFound.selector);
+        app.zapIn(USDT, address(0xdead), 6e6, 0, 0, block.timestamp + 1000);
+    }
 }

@@ -108,6 +108,45 @@
   },
   {
     "type": "function",
+    "name": "quoteZapIn",
+    "inputs": [
+      {
+        "name": "tokenIn_",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "tokenOther_",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "amountIn_",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "swapAmount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "amountOut",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "liquidity",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "removeLiquidity",
     "inputs": [
       {
@@ -149,6 +188,50 @@
       },
       {
         "name": "amountB",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "zapIn",
+    "inputs": [
+      {
+        "name": "tokenIn_",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "tokenOther_",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "amountIn_",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "amountOutMin_",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "liquidityMin_",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "deadline_",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "liquidity",
         "type": "uint256",
         "internalType": "uint256"
       }
@@ -242,8 +325,55 @@
     "anonymous": false
   },
   {
+    "type": "event",
+    "name": "ZapIn",
+    "inputs": [
+      {
+        "name": "provider",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "tokenIn",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "tokenOther",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amountIn",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "liquidity",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
     "type": "error",
     "name": "IdenticalTokens",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InsufficientLiquidityMinted",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NoLiquidity",
     "inputs": []
   },
   {
@@ -270,6 +400,11 @@
   {
     "type": "error",
     "name": "ZeroAddress",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ZeroAmount",
     "inputs": []
   }
 ]
