@@ -13,7 +13,7 @@ if (!projectId) {
 }
 
 export const wagmiConfig = getDefaultConfig({
-  appName: 'Token Swap App',
+  appName: 'Token Swap & Liquidity App',
   projectId: projectId || 'MISSING_WALLETCONNECT_PROJECT_ID',
   chains: [arbitrumSepolia],
   transports: {

@@ -8,13 +8,14 @@ function readAddress(key: string): Address | undefined {
 
 export const contracts = {
   swapApp: readAddress('VITE_SWAP_APP_ADDRESS'),
+  liquidityApp: readAddress('VITE_LIQUIDITY_APP_ADDRESS'),
   router: readAddress('VITE_ROUTER_ADDRESS'),
   dusd: readAddress('VITE_DUSD_ADDRESS'),
   ddai: readAddress('VITE_DDAI_ADDRESS'),
 }
 
 export const isDeployed = Boolean(
-  contracts.swapApp && contracts.router && contracts.dusd && contracts.ddai,
+  contracts.swapApp && contracts.liquidityApp && contracts.router && contracts.dusd && contracts.ddai,
 )
 
 export const tokens = [

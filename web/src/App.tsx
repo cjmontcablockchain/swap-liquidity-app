@@ -1,8 +1,10 @@
 import { ConnectButton } from '@rainbow-me/rainbowkit'
+import { useState } from 'react'
 import { useAccount, useChainId, useSwitchChain } from 'wagmi'
 import { arbitrumSepolia } from 'wagmi/chains'
 import { BalanceDisplay } from './components/BalanceDisplay'
 import { Faucet } from './components/Faucet'
+import { LiquidityForm } from './components/LiquidityForm'
 import { SwapForm } from './components/SwapForm'
 import { isDeployed } from './config/contracts'
 
@@ -28,11 +30,13 @@ function NetworkBanner() {
 }
 
 export default function App() {
+  const [tab, setTab] = useState<'swap' | 'liquidity'>('swap')
+
   return (
     <div className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 px-4 py-10">
       <header className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold">Token Swap App</h1>
+          <h1 className="text-xl font-semibold">Token Swap &amp; Liquidity App</h1>
           <p className="text-sm text-white/50">Arbitrum Sepolia demo</p>
         </div>
         <ConnectButton />
@@ -59,8 +63,21 @@ export default function App() {
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium text-white/70">Swap</h2>
-        <SwapForm />
+        <div className="flex gap-2">
+          {(['swap', 'liquidity'] as const).map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setTab(t)}
+              className={`rounded-lg px-4 py-1.5 text-sm font-medium capitalize ${
+                tab === t ? 'bg-white/90 text-black' : 'bg-white/5 text-white/60 hover:bg-white/10'
+              }`}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+        {tab === 'swap' ? <SwapForm /> : <LiquidityForm />}
       </section>
 
       <footer className="mt-auto pt-10 text-center text-xs text-white/30">
