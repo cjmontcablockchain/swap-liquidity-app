@@ -22,7 +22,9 @@ contract MockV2RouterTest is Test {
         ddai.mint(deployer, 1_000_000e18);
         dusd.approve(address(router), 1_000_000e6);
         ddai.approve(address(router), 1_000_000e18);
-        router.addLiquidity(address(dusd), address(ddai), 1_000_000e6, 1_000_000e18);
+        router.addLiquidity(
+            address(dusd), address(ddai), 1_000_000e6, 1_000_000e18, 0, 0, deployer, block.timestamp + 1000
+        );
     }
 
     function _path() internal view returns (address[] memory path) {

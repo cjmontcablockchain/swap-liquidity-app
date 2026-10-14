@@ -1,4 +1,4 @@
-# Token Swap App
+# Token Swap & Liquidity App
 
 [![test](https://github.com/cjmontcablockchain/token-swap-app/actions/workflows/test.yml/badge.svg)](https://github.com/cjmontcablockchain/token-swap-app/actions/workflows/test.yml)
 [![web](https://github.com/cjmontcablockchain/token-swap-app/actions/workflows/web.yml/badge.svg)](https://github.com/cjmontcablockchain/token-swap-app/actions/workflows/web.yml)
@@ -7,6 +7,11 @@ A minimal Solidity contract that lets a caller swap an exact amount of one
 ERC-20 token for another through a Uniswap V2-compatible router, built with
 [Foundry](https://book.getfoundry.sh/), plus a React/wagmi web interface
 ([web/](web/)) to try it live on Arbitrum Sepolia.
+
+This project extends [token-swap-app](../token-swap-app) with liquidity
+provision: `LiquidityApp` ([src/LiquidityApp.sol](src/LiquidityApp.sol)) adds
+and removes liquidity through the same router, and the web interface has a
+Liquidity tab next to Swap. `SwapApp` is unchanged.
 
 **Live demo:** deploy instructions in [Web interface](#web-interface) below — not yet live.
 
@@ -29,6 +34,28 @@ caller --swapTokens(amountIn, amountOutMin, path, deadline)--> SwapApp
 custodies the input token for the duration of a single transaction and
 delegates all swap logic to the configured router. The router address is
 fixed at deployment time ([src/SwapApp.sol](src/SwapApp.sol)).
+
+### Liquidity
+
+```
+add:    caller --addLiquidity(tokenA, tokenB, desiredA/B, minA/B, deadline)--> LiquidityApp
+          pulls both tokens, approves router, router.addLiquidity(..., to = caller),
+          refunds whatever the router did not use, resets allowances.
+          LP tokens are minted straight to the caller.
+
+remove: caller --removeLiquidity(tokenA, tokenB, liquidity, minA/B, deadline)--> LiquidityApp
+          pulls LP tokens, approves router, router.removeLiquidity(..., to = caller).
+```
+
+The caller must approve `LiquidityApp` for both tokens when adding, and for
+the pair's LP token (`LiquidityApp.getPair(a, b)`) when removing. The
+interface gained `addLiquidity`, `removeLiquidity` and `factory` (plus the new
+`IV2Factory.getPair`), all matching the real Uniswap V2 router signatures.
+`MockV2Router` now mirrors them, acts as its own factory, and issues an LP
+token (`MockPair`) per pool, so swap fees accrue to liquidity providers.
+Liquidity is tested both against the mock (`LiquidityApp.t.sol`) and on an
+Arbitrum fork against the real router (`LiquidityAppFork.t.sol`).
+`forge test --no-match-contract "Fork|SwapAppTest"` runs everything that needs no RPC.
 
 ## Design notes
 
@@ -64,21 +91,27 @@ fixed at deployment time ([src/SwapApp.sol](src/SwapApp.sol)).
 
 ```
 src/
-  SwapApp.sol                Main contract
-  interfaces/IV2Router02.sol  Minimal Uniswap V2 router interface
+  SwapApp.sol                Swap contract
+  LiquidityApp.sol           Add/remove liquidity contract
+  interfaces/IV2Router02.sol  Minimal Uniswap V2 router interface (swap + liquidity)
+  interfaces/IV2Factory.sol   Minimal factory interface (getPair = LP token)
   mocks/
     MockERC20.sol             Faucet-mintable demo ERC-20
-    MockV2Router.sol          Self-contained constant-product AMM for the testnet demo
+    MockV2Router.sol          Self-contained constant-product AMM (swap + LP tokens) for the testnet demo
+    MockPair.sol              LP token of a MockV2Router pool
 script/
   SwapApp.s.sol               Deploys SwapApp against an existing router
-  DeployTestnet.s.sol         Deploys the full demo stack (tokens + AMM + SwapApp) on testnet
+  LiquidityApp.s.sol          Deploys LiquidityApp against an existing router
+  DeployTestnet.s.sol         Deploys the full demo stack (tokens + AMM + SwapApp + LiquidityApp) on testnet
 test/
   SwapApp.t.sol               Fork tests against the real Uniswap V2 router (happy path + revert cases)
+  LiquidityApp.t.sol          Liquidity tests against the demo AMM (no fork needed)
+  LiquidityAppFork.t.sol      Fork tests of LiquidityApp against the real Uniswap V2 router
   MockV2Router.t.sol          Unit tests for the demo AMM
   MockV2RouterSecurity.t.sol  Reentrancy regression test (see SECURITY.md)
 web/
   src/config/                 wagmi/RainbowKit setup and contract addresses (via env vars)
-  src/components/             Faucet, balances and swap form
+  src/components/             Faucet, balances, swap form and liquidity form
 ```
 
 ## Usage
@@ -119,7 +152,8 @@ forge script script/SwapApp.s.sol --rpc-url "$ARBITRUM_RPC_URL" --broadcast
 ### Deploy the testnet demo stack
 
 The web interface needs its own demo contracts on Arbitrum Sepolia: two
-faucet-mintable tokens, the self-contained AMM, and `SwapApp` pointed at it.
+faucet-mintable tokens, the self-contained AMM, and `SwapApp` and
+`LiquidityApp` pointed at it.
 Get testnet ETH from an [Arbitrum Sepolia faucet](https://faucet.quicknode.com/arbitrum/sepolia),
 set `PRIVATE_KEY` in `.env` (never commit this), then:
 
@@ -128,7 +162,7 @@ set -a && source .env && set +a
 forge script script/DeployTestnet.s.sol --rpc-url "https://sepolia-rollup.arbitrum.io/rpc" --broadcast
 ```
 
-Copy the four printed addresses (DUSD, DDAI, router, SwapApp) into
+Copy the printed addresses (DUSD, DDAI, router, SwapApp, LiquidityApp) into
 `web/.env` (see below).
 
 ### Try it locally first, with no testnet and no wallet
@@ -143,7 +177,7 @@ anvil &   # starts a local chain on http://localhost:8545
 
 PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
   forge script script/DeployTestnet.s.sol --rpc-url http://localhost:8545 --broadcast
-# copy the 4 printed addresses into the variables below
+# copy the printed addresses into the variables below
 ```
 
 Then drive the deployed contracts directly with `cast`, as a second Anvil

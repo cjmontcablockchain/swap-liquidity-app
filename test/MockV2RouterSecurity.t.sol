@@ -30,7 +30,9 @@ contract MockV2RouterSecurityTest is Test {
         ddai.mint(address(this), INITIAL_DDAI_RESERVE);
         rent.approve(address(router), INITIAL_RENT_RESERVE);
         ddai.approve(address(router), INITIAL_DDAI_RESERVE);
-        router.addLiquidity(address(rent), address(ddai), INITIAL_RENT_RESERVE, INITIAL_DDAI_RESERVE);
+        router.addLiquidity(
+            address(rent), address(ddai), INITIAL_RENT_RESERVE, INITIAL_DDAI_RESERVE, 0, 0, address(this), block.timestamp + 1000
+        );
 
         rent.mint(attacker, 10_000e18);
     }
