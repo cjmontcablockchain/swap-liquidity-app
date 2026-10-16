@@ -74,6 +74,20 @@ Liquidity is tested both against the mock (`LiquidityApp.t.sol`) and on an
 Arbitrum fork against the real router (`LiquidityAppFork.t.sol`).
 `forge test --no-match-contract "Fork|SwapAppTest"` runs everything that needs no RPC.
 
+### Fuzz and invariant tests
+
+- [test/LiquidityAppFuzz.t.sol](test/LiquidityAppFuzz.t.sol) fuzzes the `zapIn` maths:
+  the swap leg is always a strict part of the input (and ~half for small deposits),
+  a zap never leaves tokens or allowances in the contract, the user never pays more
+  than `amountIn`, and `quoteZapIn` matches the LP actually minted.
+- [test/invariant/](test/invariant/) runs random sequences of add / remove / zap / swap
+  from several actors and checks that `LiquidityApp` and `SwapApp` never hold a token
+  balance or leave a router allowance behind, which is the "holds no funds" claim in
+  [SECURITY.md](SECURITY.md), and that the pool never has supply without reserves.
+
+Both run against `MockV2Router` (no RPC): `forge test --match-contract "LiquidityAppFuzzTest|InvariantsTest"`.
+Invariant runs/depth are set in [foundry.toml](foundry.toml).
+
 ## Design notes
 
 - **`forceApprove` instead of `approve`**: some ERC-20 tokens (e.g. USDT on
