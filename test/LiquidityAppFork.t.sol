@@ -118,7 +118,8 @@ contract LiquidityAppForkTest is Test {
         assertGt(quotedOut, 0);
 
         vm.prank(user);
-        uint256 liquidity = app.zapIn(USDT, DAI, 6e6, quotedOut * 99 / 100, quotedLiquidity * 99 / 100, block.timestamp + 1000);
+        uint256 liquidity =
+            app.zapIn(USDT, DAI, 6e6, quotedOut * 99 / 100, quotedLiquidity * 99 / 100, block.timestamp + 1000);
 
         assertGt(liquidity, 0);
         assertEq(IERC20(pair).balanceOf(user), liquidity);
@@ -145,7 +146,8 @@ contract LiquidityAppForkTest is Test {
         vm.stopPrank();
 
         // Out and back the user holds ~6 USD of value, minus fees and price impact.
-        uint256 valueBack = (IERC20(USDT).balanceOf(user) - usdtBefore) * 1e12 + (IERC20(DAI).balanceOf(user) - daiBefore);
+        uint256 valueBack =
+            (IERC20(USDT).balanceOf(user) - usdtBefore) * 1e12 + (IERC20(DAI).balanceOf(user) - daiBefore);
         assertGt(valueBack, 5.8e18);
         assertLt(valueBack, 6.2e18);
     }

@@ -69,8 +69,7 @@ contract LiquidityAppTest is Test {
 
         // Offer 100 DUSD but 500 DDAI: pool ratio is 1:1 so only 100 DDAI is used.
         vm.prank(user);
-        (uint256 usedA, uint256 usedB,) =
-            app.addLiquidity(address(dusd), address(ddai), 100e6, 500e18, 0, 0, deadline);
+        (uint256 usedA, uint256 usedB,) = app.addLiquidity(address(dusd), address(ddai), 100e6, 500e18, 0, 0, deadline);
 
         assertEq(usedA, 100e6);
         assertEq(usedB, 100e18);

@@ -67,14 +67,10 @@ contract MockV2Router is IV2Router02, IV2Factory {
 
     /// @dev Computes and mints LP tokens, then updates reserves (effects before
     ///      the token pulls done by the caller).
-    function _mintLiquidity(
-        MockPair pair,
-        address tokenA,
-        address tokenB,
-        uint256 amountA,
-        uint256 amountB,
-        address to
-    ) internal returns (uint256 liquidity) {
+    function _mintLiquidity(MockPair pair, address tokenA, address tokenB, uint256 amountA, uint256 amountB, address to)
+        internal
+        returns (uint256 liquidity)
+    {
         uint256 supply = pair.totalSupply();
         if (supply == 0) {
             liquidity = Math.sqrt(amountA * amountB) - MINIMUM_LIQUIDITY;

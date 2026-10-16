@@ -18,7 +18,10 @@ contract DeployTestnetScript is Script {
     uint256 constant FAUCET_AMOUNT_DUSD = 1_000e6;
     uint256 constant FAUCET_AMOUNT_DDAI = 1_000e18;
 
-    function run() external returns (MockERC20 dusd, MockERC20 ddai, MockV2Router router, SwapApp app, LiquidityApp liquidityApp) {
+    function run()
+        external
+        returns (MockERC20 dusd, MockERC20 ddai, MockV2Router router, SwapApp app, LiquidityApp liquidityApp)
+    {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         address deployer = vm.addr(deployerPrivateKey);
 

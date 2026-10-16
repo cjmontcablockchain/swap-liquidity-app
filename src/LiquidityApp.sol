@@ -192,8 +192,7 @@ contract LiquidityApp is ReentrancyGuard {
         pair = getPair(tokenIn_, tokenOther_);
         if (pair == address(0)) revert PairNotFound();
         (uint112 reserve0, uint112 reserve1,) = IV2Pair(pair).getReserves();
-        (reserveIn, reserveOther) =
-            IV2Pair(pair).token0() == tokenIn_ ? (reserve0, reserve1) : (reserve1, reserve0);
+        (reserveIn, reserveOther) = IV2Pair(pair).token0() == tokenIn_ ? (reserve0, reserve1) : (reserve1, reserve0);
         if (reserveIn == 0 || reserveOther == 0) revert NoLiquidity();
     }
 
@@ -203,18 +202,13 @@ contract LiquidityApp is ReentrancyGuard {
     ///      with f1 = 997, d = 1000 (fee 0.3%), r = reserveIn, a = amountIn.
     function _optimalSwapAmount(uint256 reserveIn_, uint256 amountIn_) internal pure returns (uint256) {
         uint256 sum = FEE_NUMERATOR + FEE_DENOMINATOR; // 1997
-        uint256 root = Math.sqrt(
-            reserveIn_ * (amountIn_ * 4 * FEE_NUMERATOR * FEE_DENOMINATOR + reserveIn_ * sum * sum)
-        );
+        uint256 root =
+            Math.sqrt(reserveIn_ * (amountIn_ * 4 * FEE_NUMERATOR * FEE_DENOMINATOR + reserveIn_ * sum * sum));
         return (root - reserveIn_ * sum) / (2 * FEE_NUMERATOR);
     }
 
     /// @dev Uniswap V2 constant-product output for `amountIn_` against the given reserves.
-    function _getAmountOut(uint256 amountIn_, uint256 reserveIn_, uint256 reserveOut_)
-        internal
-        pure
-        returns (uint256)
-    {
+    function _getAmountOut(uint256 amountIn_, uint256 reserveIn_, uint256 reserveOut_) internal pure returns (uint256) {
         uint256 amountInWithFee = amountIn_ * FEE_NUMERATOR;
         return (amountInWithFee * reserveOut_) / (reserveIn_ * FEE_DENOMINATOR + amountInWithFee);
     }
