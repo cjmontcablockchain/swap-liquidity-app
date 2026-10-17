@@ -6,14 +6,14 @@
 A minimal Solidity contract that lets a caller swap an exact amount of one
 ERC-20 token for another through a Uniswap V2-compatible router, built with
 [Foundry](https://book.getfoundry.sh/), plus a React/wagmi web interface
-([web/](web/)) to try it live on Arbitrum Sepolia.
+([web/](web/)) that runs against a testnet deployment on Arbitrum Sepolia.
 
 This project extends [token-swap-app](https://github.com/cjmontcablockchain/token-swap-app) with liquidity
 provision: `LiquidityApp` ([src/LiquidityApp.sol](src/LiquidityApp.sol)) adds
 and removes liquidity through the same router, and the web interface has a
 Liquidity tab next to Swap. `SwapApp` is unchanged.
 
-**Live demo:** deploy instructions in [Web interface](#web-interface) below — not yet live.
+**Running it:** contracts and tests via `forge` ([Usage](#usage)); the web interface locally via `npm run dev` ([Web interface](#web-interface)).
 
 ## How it works
 
@@ -107,7 +107,7 @@ Invariant runs/depth are set in [foundry.toml](foundry.toml).
   out. None of the assertions depend on an exact swap output, only on
   thresholds and balance deltas, so forking at latest is safe.
 - **Testnet demo AMM is not Uniswap V2**: Uniswap V2 has no official router
-  deployment on Arbitrum Sepolia, so the live demo runs against a small
+  deployment on Arbitrum Sepolia, so the testnet demo runs against a small
   constant-product AMM written for this project
   ([src/mocks/MockV2Router.sol](src/mocks/MockV2Router.sol)) that implements
   the same `IV2Router02` interface `SwapApp` consumes. `SwapApp` itself is
